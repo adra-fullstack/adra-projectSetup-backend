@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { registerUser, loginUser, logOutUser, forgotPassword, resetPassword, getUser, resetJwtToken, registerInterviewCandidate, interviewCandidateLogIn } = require("../controllers/authController");
+const { registerUser, loginUser, logOutUser, forgotPassword, resetPassword, getUser, resetJwtToken, registerInterviewCandidate, LogIn } = require("../controllers/authController");
 const { isAuthenticatedUser } = require('../middlewares/authenticate');
 const router = express.Router();
 const upload = multer() 
@@ -14,7 +14,7 @@ router.route('/password/forgot').post(forgotPassword);
 router.route('/password/reset/:token').post(resetPassword);
 router.route('/refresh_token').get(resetJwtToken)
 router.route('/register_candidate').post(registerInterviewCandidate);
-router.route('/candidate_log_in').post(interviewCandidateLogIn)
+router.route('/candidate_log_in').post(LogIn)
 
 
 module.exports = router;

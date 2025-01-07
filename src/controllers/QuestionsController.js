@@ -1,9 +1,12 @@
 const { HrInterviewFilter } = require('../functionPieces/HrInterviewFilter');
 const catchAsyncError = require('../middlewares/catchAsyncError');
+const interviewCandidateModel = require('../models/interviewCandidateModel');
 const mcqquestionModel = require('../models/McqQuestionsModel');
-const QuestionGeneratorModel = require('../models/QuestionGeneratorModel')
+const QuestionGeneratorModel = require('../models/QuestionGeneratorModel');
+const User = require('../models/userModel');
 const ErrorHandler = require('../utils/errorHandling');
 const csv = require('csvtojson');
+const { ObjectId } = require('mongodb');
 
 exports.createQuestions = catchAsyncError(async (req, res, next) => {
     const { flag, data } = req.body;
@@ -213,59 +216,216 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         const question_gernerator = await QuestionGeneratorModel.find({ candidate_id: userId });
 
         if (!question_gernerator) {
-            return next(new ErrorHandler("User not found", 404))
+            return next(new ErrorHandler("User not found", 404));
         }
-        const candidate_apti_id = question_gernerator[0]?._id
-        const candidateRole = question_gernerator[0]?.candidate_role
-        const difficultyLevel = question_gernerator[0]?.difficulty_level
-        const if_question_assigned = question_gernerator[0]?.if_question_assigned
+
+        const candidate_apti_id = question_gernerator[0]?._id;
+        const if_question_assigned = question_gernerator[0]?.if_question_assigned;
+
+        const questions = await mcqquestionModel.find();
+        let tech_questions_moderate = [];
+        let tech_questions_hard = [];
+        let apti_questions = [];
+
+        // Generate technical moderate questions
+        const techniModreate = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "moderate");
+        if (techniModreate?.length) {
+            while (tech_questions_moderate.length < 15 && tech_questions_moderate.length < techniModreate.length) {
+                const idx = Math.floor(Math.random() * techniModreate.length);
+                const isQuestionDuplicated = tech_questions_moderate.some((v) => v._id.equals(techniModreate[idx]._id));
+                if (!isQuestionDuplicated) {
+                    tech_questions_moderate.push(techniModreate[idx]);
+                }
+            }
+        }
+        console.log(tech_questions_moderate?.length, "mern moderate", techniModreate?.length)
+
+        // Generate technical hard questions
+        const techniHard = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "hard");
+        if (techniHard?.length) {
+            while (tech_questions_hard.length < 25 && tech_questions_hard.length < techniHard.length) {
+                const idx = Math.floor(Math.random() * techniHard.length);
+                const isQuestionDuplicated = tech_questions_hard.some((v) => v._id.equals(techniHard[idx]._id));
+                if (!isQuestionDuplicated) {
+                    tech_questions_hard.push(techniHard[idx]);
+                }
+            }
+        }
+        console.log(tech_questions_hard?.length, "mern HARD", techniHard?.length)
+
+        // Generate aptitude questions
+        const aptiQues = questions.filter((v) => v.question_type === "aptitude");
+        if (aptiQues?.length) {
+            while (apti_questions.length < 20 && apti_questions.length < aptiQues.length) {
+                const idx = Math.floor(Math.random() * aptiQues.length);
+                const isQuestionDuplicated = apti_questions.some((v) => v._id.equals(aptiQues[idx]._id));
+                if (!isQuestionDuplicated) {
+                    apti_questions.push(aptiQues[idx]);
+                }
+            }
+        }
+        console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
 
 
-        const questions = await mcqquestionModel.find()
-        var generated_questions = [];
-        let update_generated_questions = [];
-
-        const aptitude = questions.filter((v) => v.question_type === "aptitude")
-        if (aptitude?.length) {
-            for (var i = 0; i < 30; i++) {
-                var idx = Math.floor(Math.random() * aptitude.length);
-                generated_questions.push(aptitude[idx]);
+        // Combine questions and ensure 60 total
+        var generated_questions = [...apti_questions, ...tech_questions_moderate, ...tech_questions_hard];
+        while (generated_questions.length < 60 && questions.length > generated_questions.length) {
+            const idx = Math.floor(Math.random() * questions.length);
+            const isDuplicated = generated_questions.some((q) => q._id.equals(questions[idx]._id));
+            if (!isDuplicated) {
+                generated_questions.push(questions[idx]);
             }
         }
 
-        const technicalQues = questions.filter((v) => v.question_type === "mern")
-        if (technicalQues?.length) {
-            for (var i = 0; i < 30; i++) {
-                var idx = Math.floor(Math.random() * technicalQues.length);
-                generated_questions.push(technicalQues[idx]);
-            }
-        }
-
-        // if (!if_question_assigned) {
-            update_generated_questions = await QuestionGeneratorModel.findByIdAndUpdate(
+        // Update or send questions
+        let update_generated_data;
+        if (!if_question_assigned) {
+            update_generated_data = await QuestionGeneratorModel.findByIdAndUpdate(
                 { _id: candidate_apti_id },
                 {
                     assigned_questions: generated_questions,
-                    if_question_assigned: generated_questions?.length ? true : false,
+                    if_question_assigned: true,
                     status: "Test Started",
                     test_StartedOn: new Date(),
-                    test_EndedOn: new Date(Date.now() + (60 + 5) * 60 * 1000)
+                    test_EndedOn: new Date(Date.now() + 60 * 60 * 1000),
                 },
-                {
-                    new: true,
-                });
+                { new: true }
+            );
+        } else {
+            update_generated_data = question_gernerator[0];
+        }
 
-            console.log(update_generated_questions)
-        // } else {
-        //     update_generated_questions = question_gernerator
-        // }
+        // Remove answers
+        update_generated_data.assigned_questions = update_generated_data?.assigned_questions?.map((v) => {
+            const { answer, ...rest } = v;
+            return rest;
+        });
 
         res.status(200).json({
             success: true,
             error_code: 0,
-            data: update_generated_questions,
+            data: update_generated_data,
+            message: "Questions fetched successfully",
+        });
+    } catch (Err) {
+        res.status(500).json({
+            success: false,
+            message: Err?.message,
+        });
+    }
+});
+
+exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
+    try {
+        const userId = req.user?.id;
+        const candidateAnswers = req.body;
+        const question_gernerator = await QuestionGeneratorModel.find({ candidate_id: userId });
+        if (!question_gernerator) {
+            return next(new ErrorHandler("User not found", 404))
+        }
+
+        //validating answer
+        const candidate_apti_id = question_gernerator[0]?._id;
+        const updated_Answers = question_gernerator[0]?.assigned_questions?.map((originalData) => {
+            const matchingAnswer = candidateAnswers?.find((responseData) => {
+                const objectId = new ObjectId(responseData?._id);
+                return originalData?._id?.equals(objectId);
+            });
+            return {
+                ...originalData,
+                candidate_answer: matchingAnswer?.candidate_answer || '',
+            };
+        });
+
+        const calculate_apti_score = updated_Answers?.filter((val) => val?.question_type === "aptitude" && val?.candidate_answer === val?.answer)
+        const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
+        const calculate_tech_hard_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "hard" && val?.candidate_answer === val?.answer)
+
+        await QuestionGeneratorModel.findByIdAndUpdate(
+            { _id: candidate_apti_id },
+            {
+                assigned_questions: updated_Answers,
+                status: "Test Completed",
+                aptitude_score: calculate_apti_score?.length || 0,
+                tech_moderate_score: calculate_tech_moderate_score?.length || 0,
+                tech_hard_score: calculate_tech_hard_score?.length || 0
+            }
+        );
+        //
+
+        //Test completed user one time logged in setting true
+        const candidate_id = question_gernerator[0]?.candidate_id;
+        const candidate_exist = await interviewCandidateModel.findById({ _id: candidate_id });
+        if (!candidate_exist) {
+            return next(new ErrorHandler("User not found", 404))
+        }
+
+        // If oneTimeLoggedin is true then the test has been completed 
+        if (candidate_exist?.oneTimeLoggedin) {
+            return next(new ErrorHandler("Response already submitted", 404))
+        }
+
+        await interviewCandidateModel.findByIdAndUpdate({ _id: candidate_id }, { oneTimeLoggedin: true });
+        res.status(200).json({
+            success: true,
+            error_code: 0,
+            data: {},
             message: "Questions fetched successfully"
         })
+    }
+    catch (Err) {
+        res.status(500).json({
+            success: false,
+            message: Err?.message
+        })
+    }
+})
+
+exports.getInterviewCandidateStatus = catchAsyncError(async (req, res, next) => {
+    try {
+        // const userId = req.user?.id;
+        // const user = await User.findById({ _id: userId });
+        // if (!user) {
+        //     return next(new ErrorHandler("User not found", 404))
+        // }
+
+        const getCandidates = await QuestionGeneratorModel.aggregate([
+            {
+                $lookup: {
+                    from: "interview_candidates",
+                    localField: "candidate_id",
+                    foreignField: "_id",
+                    as: "candidate_details"
+                }
+            },
+            {
+                $project: {
+                    aptitude_score: 1,
+                    tech_hard_score: 1,
+                    tech_moderate_score: 1,
+                    test_EndedOn: 1,
+                    test_StartedOn: 1,
+                    candidate_role: 1,
+                    status: 1,
+                    candidate_details: {
+                        name: 1,
+                        candidateQualification: 1,
+                        phoneNumber: 1,
+                        email: 1,
+                        address: 1
+                    }
+                }
+            }
+        ])
+
+
+        res.status(200).json({
+            success: true,
+            data: getCandidates,
+            error_code: 0,
+            message: "candidate status fetched"
+        })
+
     }
     catch (Err) {
         res.status(500).json({

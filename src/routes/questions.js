@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer')
-const { createQuestions, getQuestionTypes, updateQuestions, deleteQuestions, uploadQuestionsUsingCsv, getAllQuestions, getRandomQuestion } = require('../controllers/QuestionsController');
+const { createQuestions, getQuestionTypes, updateQuestions, deleteQuestions, uploadQuestionsUsingCsv, getAllQuestions, getRandomQuestion, validationCandidateAnswers, getInterviewCandidateStatus } = require('../controllers/QuestionsController');
 const { isAuthenticatedUser, isautherizeRoles } = require('../middlewares/authenticate');
 const router = express.Router();
 const upload = multer();
@@ -17,5 +17,6 @@ router.route("/get_all_questions")
     .post(isAuthenticatedUser, getAllQuestions)
 
 router.route("/generate_random_question").get(isAuthenticatedUser, getRandomQuestion);
-
+router.route("/validate_answers").post(isAuthenticatedUser, validationCandidateAnswers);
+router.route("/get_interview_candidate_status").get(getInterviewCandidateStatus)
 module.exports = router;

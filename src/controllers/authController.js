@@ -165,12 +165,11 @@ exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
 
     const { name, age, phoneNumber, email, gender, address, parentName, parentOccupation, maritalStatus, childrens, siblings, addressIfAnyCbe,
         sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, canditateExpType,
-        previousCompanyName, desigination, experience, currentSalary, expectedSalary, role, remarks } = body;
+        previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks } = body;
 
     const password = "Test@123"
 
     let candidateExperience = ""
-
     const user = await interviewCandidateModel.findOne({ $or: [{ phoneNumber: { $eq: phoneNumber } }, { email: { $eq: email } }] });
 
     if (user) {
@@ -180,7 +179,7 @@ exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
         const newUser = await interviewCandidateModel.create({
             name, age, phoneNumber, email, gender, address, password, parentName, parentOccupation, maritalStatus, childrens, siblings, addressIfAnyCbe,
             sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, canditateExpType,
-            previousCompanyName, desigination, experience, currentSalary, expectedSalary, role, remarks
+            previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks
         });
 
         if (newUser.canditateExpType === 0) {
@@ -211,17 +210,17 @@ exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
     }
 })
 
-exports.interviewCandidateLogIn = catchAsyncError(async (req, res, next) => {
+exports.LogIn = catchAsyncError(async (req, res, next) => {
     const authheader = req.headers.authorization;
     if (!authheader) {
         res.setHeader('WWW-Authenticate', 'Basic realm="Protected"');
         return next(new ErrorHandler("Invalid or missing authorization header", 401));
     }
 
+    // Basic Autherization  
     const base64Credentials = authheader.split(' ')[1];
     const credentials = Buffer.from(base64Credentials, 'base64').toString();
     const [username, password] = credentials.split(':');
-
     if (!username || !password) {
         if (typeof username != Number) {
             return next(new ErrorHandler("Invalid username or password", 401));
@@ -230,20 +229,25 @@ exports.interviewCandidateLogIn = catchAsyncError(async (req, res, next) => {
         }
     }
 
+    //Finding users
     const phoneNumber = username;
     const candidateUser = await interviewCandidateModel.findOne({ phoneNumber }).select('+password');
     const normalUser = await User.findOne({ username }).select('+password');
-
     const user = candidateUser || normalUser;
-
     if (!user) {
         return next(new ErrorHandler("User not found", 401));
     }
 
-    const isValidPassword = await user.isCandidateValidPassword(password);
-    if (!isValidPassword) {
-        return next(new ErrorHandler("Invalid username or password", 401));
-    }
+    // if interview candidates 
+    if (candidateUser) {
+        if (candidateUser?.oneTimeLoggedin) {
+            return next(new ErrorHandler(`The test has already been taken by ${candidateUser?.name}`, 401));
+        }
 
-    sendCandidateToken(user, 200, res);
+        const isValidPassword = await user.isCandidateValidPassword(password);
+        if (!isValidPassword) {
+            return next(new ErrorHandler("Invalid username or password", 401));
+        }
+        sendCandidateToken(user, 200, res);
+    }
 });

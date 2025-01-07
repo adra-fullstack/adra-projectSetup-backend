@@ -13,12 +13,11 @@ const QuestionGeneratorSchema = new mongoose.Schema({
         type: String,
         default: "Not Started"
     },
-    test_StartedOn: {
-        type: Date
-    },
-    test_EndedOn: {
-        type: Date
-    },
+    test_StartedOn: Date,
+    test_EndedOn: Date,
+    aptitude_score: Number,
+    tech_moderate_score: Number,
+    tech_hard_score: Number,
 })
 
 const QuestionGeneratorModel = mongoose.model('interview_candidate_apti_questions', QuestionGeneratorSchema);

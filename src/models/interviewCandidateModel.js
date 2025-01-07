@@ -101,6 +101,7 @@ const interviewCandidateSchema = new mongoose.Schema({
         type: String,
         // required: [true, "canditateExpType required"]
     },
+    candidateQualification: String,
     previousCompanyName: {
         type: String,
     },
