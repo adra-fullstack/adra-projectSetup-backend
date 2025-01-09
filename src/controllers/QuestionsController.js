@@ -228,54 +228,64 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         let apti_questions = [];
 
         // Generate technical moderate questions
-        const techniModreate = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "moderate");
-        if (techniModreate?.length) {
-            while (tech_questions_moderate.length < 15 && tech_questions_moderate.length < techniModreate.length) {
-                const idx = Math.floor(Math.random() * techniModreate.length);
-                const isQuestionDuplicated = tech_questions_moderate.some((v) => v._id.equals(techniModreate[idx]._id));
-                if (!isQuestionDuplicated) {
-                    tech_questions_moderate.push(techniModreate[idx]);
-                }
-            }
-        }
-        console.log(tech_questions_moderate?.length, "mern moderate", techniModreate?.length)
+        // const techniModreate = questions.filter((v) => v.question_type === "css" && v.difficulty_level === "moderate");
+        // if (techniModreate?.length) {
+        //     while (tech_questions_moderate.length < 15 && tech_questions_moderate.length < techniModreate.length) {
+        //         const idx = Math.floor(Math.random() * techniModreate.length);
+        //         const isQuestionDuplicated = tech_questions_moderate.some((v) => v._id.equals(techniModreate[idx]._id));
+        //         if (!isQuestionDuplicated) {
+        //             tech_questions_moderate.push(techniModreate[idx]);
+        //         }
+        //     }
+        // }
+        // console.log(tech_questions_moderate?.length, "mern moderate", techniModreate?.length)
 
-        // Generate technical hard questions
-        const techniHard = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "hard");
-        if (techniHard?.length) {
-            while (tech_questions_hard.length < 25 && tech_questions_hard.length < techniHard.length) {
-                const idx = Math.floor(Math.random() * techniHard.length);
-                const isQuestionDuplicated = tech_questions_hard.some((v) => v._id.equals(techniHard[idx]._id));
-                if (!isQuestionDuplicated) {
-                    tech_questions_hard.push(techniHard[idx]);
-                }
-            }
-        }
-        console.log(tech_questions_hard?.length, "mern HARD", techniHard?.length)
+        // // Generate technical hard questions
+        // const techniHard = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "hard");
+        // if (techniHard?.length) {
+        //     while (tech_questions_hard.length < 25 && tech_questions_hard.length < techniHard.length) {
+        //         const idx = Math.floor(Math.random() * techniHard.length);
+        //         const isQuestionDuplicated = tech_questions_hard.some((v) => v._id.equals(techniHard[idx]._id));
+        //         if (!isQuestionDuplicated) {
+        //             tech_questions_hard.push(techniHard[idx]);
+        //         }
+        //     }
+        // }
+        // console.log(tech_questions_hard?.length, "mern HARD", techniHard?.length)
 
-        // Generate aptitude questions
-        const aptiQues = questions.filter((v) => v.question_type === "aptitude");
-        if (aptiQues?.length) {
-            while (apti_questions.length < 20 && apti_questions.length < aptiQues.length) {
-                const idx = Math.floor(Math.random() * aptiQues.length);
-                const isQuestionDuplicated = apti_questions.some((v) => v._id.equals(aptiQues[idx]._id));
-                if (!isQuestionDuplicated) {
-                    apti_questions.push(aptiQues[idx]);
-                }
-            }
-        }
-        console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
+        // // Generate aptitude questions
+        // const aptiQues = questions.filter((v) => v.question_type === "aptitude");
+        // if (aptiQues?.length) {
+        //     while (apti_questions.length < 20 && apti_questions.length < aptiQues.length) {
+        //         const idx = Math.floor(Math.random() * aptiQues.length);
+        //         const isQuestionDuplicated = apti_questions.some((v) => v._id.equals(aptiQues[idx]._id));
+        //         if (!isQuestionDuplicated) {
+        //             apti_questions.push(aptiQues[idx]);
+        //         }
+        //     }
+        // }
+        // console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
 
+        const css_ques = questions.filter((v) => v.question_type === "css");
+        // if (techniModreate?.length) {
+        //     while (tech_questions_moderate.length < 15 && tech_questions_moderate.length < techniModreate.length) {
+        //         const idx = Math.floor(Math.random() * techniModreate.length);
+        //         const isQuestionDuplicated = tech_questions_moderate.some((v) => v._id.equals(techniModreate[idx]._id));
+        //         if (!isQuestionDuplicated) {
+        //             tech_questions_moderate.push(techniModreate[idx]);
+        //         }
+        //     }
+        // }
 
         // Combine questions and ensure 60 total
-        var generated_questions = [...apti_questions, ...tech_questions_moderate, ...tech_questions_hard];
-        while (generated_questions.length < 60 && questions.length > generated_questions.length) {
-            const idx = Math.floor(Math.random() * questions.length);
-            const isDuplicated = generated_questions.some((q) => q._id.equals(questions[idx]._id));
-            if (!isDuplicated) {
-                generated_questions.push(questions[idx]);
-            }
-        }
+        var generated_questions = [...css_ques];
+        // while (generated_questions.length < 60 && questions.length > generated_questions.length) {
+        //     const idx = Math.floor(Math.random() * questions.length);
+        //     const isDuplicated = generated_questions.some((q) => q._id.equals(questions[idx]._id));
+        //     if (!isDuplicated) {
+        //         generated_questions.push(questions[idx]);
+        //     }
+        // }
 
         // Update or send questions
         let update_generated_data;
@@ -337,18 +347,19 @@ exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
             };
         });
 
-        const calculate_apti_score = updated_Answers?.filter((val) => val?.question_type === "aptitude" && val?.candidate_answer === val?.answer)
-        const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
-        const calculate_tech_hard_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "hard" && val?.candidate_answer === val?.answer)
+        const calculate_css_score = updated_Answers?.filter((val) => val?.question_type === "css" && val?.candidate_answer === val?.answer)
+        // const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
+        // const calculate_tech_hard_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "hard" && val?.candidate_answer === val?.answer)
 
         await QuestionGeneratorModel.findByIdAndUpdate(
             { _id: candidate_apti_id },
             {
                 assigned_questions: updated_Answers,
                 status: "Test Completed",
-                aptitude_score: calculate_apti_score?.length || 0,
-                tech_moderate_score: calculate_tech_moderate_score?.length || 0,
-                tech_hard_score: calculate_tech_hard_score?.length || 0
+                // aptitude_score: calculate_apti_score?.length || 0,
+                // tech_moderate_score: calculate_tech_moderate_score?.length || 0,
+                // tech_hard_score: calculate_tech_hard_score?.length || 0,
+                aptitude_score:calculate_css_score?.length || 0
             }
         );
         //
