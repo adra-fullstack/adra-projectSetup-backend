@@ -36,7 +36,7 @@ const interviewCandidateSchema = new mongoose.Schema({
     email: {
         type: String,
         required: [true, "Please enter email"],
-        maxLength: [30, "Name should not exceed 30 characters"],
+        // maxLength: [30, "Email should not exceed 30 characters"],
         unique: true,
         validate: [validator.isEmail, 'Please enter valid email address']
     },

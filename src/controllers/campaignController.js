@@ -1,6 +1,5 @@
 const { CampaignModel, CandidateModel } = require("../models/campaignModel")
 
-
 // Read
 exports.displayCampaign = async (req, res) => {
     try {
@@ -17,7 +16,6 @@ exports.displayCampaign = async (req, res) => {
         res.status(500).json({ message: "Internal Server errror" })
     }
 }
-
 
 exports.displayCandidates = async (req, res) => {
     try {
@@ -246,8 +244,6 @@ exports.deleteCandidates = async (req, res) => {
 exports.deleteCampaign = async (req, res) => {
     try {
         const CampaignId = await CampaignModel.findById({ _id: req.body.id })
-
-
 
         if (!CampaignId) {
             return res.status(404).json({

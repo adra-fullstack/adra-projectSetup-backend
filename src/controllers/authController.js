@@ -2,8 +2,7 @@ const ErrorHandler = require("../utils/errorHandling");
 const catchAsyncError = require("../middlewares/catchAsyncError");
 
 const sendEmail = require("../utils/email");
-const sendCandidateToken = require("../utils/jwt");
-const sendToken = require("../utils/jwt");
+const sendToken = require("../utils/jwt"); 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
@@ -230,10 +229,17 @@ exports.LogIn = catchAsyncError(async (req, res, next) => {
     }
 
     //Finding users
-    const phoneNumber = username;
-    const candidateUser = await interviewCandidateModel.findOne({ phoneNumber }).select('+password');
-    const normalUser = await User.findOne({ username }).select('+password');
-    const user = candidateUser || normalUser;
+    let candidateUser;
+    let adraUser;
+    if (isFinite(username)) {
+        const phoneNumber = username;
+        candidateUser = await interviewCandidateModel.findOne({ phoneNumber }).select('+password');
+    } else {
+        adraUser = await User.findOne({ username }).select('+password');
+    }
+
+
+    const user = candidateUser || adraUser;
     if (!user) {
         return next(new ErrorHandler("User not found", 401));
     }
@@ -248,6 +254,16 @@ exports.LogIn = catchAsyncError(async (req, res, next) => {
         if (!isValidPassword) {
             return next(new ErrorHandler("Invalid username or password", 401));
         }
-        sendCandidateToken(user, 200, res);
+        sendToken(user, 200, res);
+    }
+
+
+    if (adraUser) { 
+        const isValidPassword = await user.isValidPassword(password);
+        if (!isValidPassword) {
+            return next(new ErrorHandler("Invalid username or password", 401));
+        }
+
+        sendToken(user, 200, res);
     }
 });

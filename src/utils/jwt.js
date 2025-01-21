@@ -1,43 +1,41 @@
-const sendToken = (user, statusCode, res) => {
+// const sendUserToken = (user, statusCode, res) => {
+//     //creating jwt token
+//     // const refreshToken = user.getRefreshJwtToken();
+//     const token = user.getJwtToken();
+//     const user_role = user?.user_role; 
 
+//     res.status(statusCode).json({
+//         success: true,
+//         data: {
+//             token,
+//             user_role
+//         },
+//         message: "Login successfully",
+//         error_code: 0
+//     })
+// }
+// module.exports = sendUserToken;
+
+
+
+const sendToken = async (user, statusCode, res) => {
     //creating jwt token
-    const token = user.getJwtToken();
-    const refreshToken = user.getRefreshJwtToken();
+    let token;
+    switch (user?.user_role) {
+        case "admin":
+            token = user.getJwtToken();
+            break;
 
-    //setting cookies
-    const options = {
-        httpOnly: true,
-        sameSite: 'strict'
+        case "interview_candidate":
+            token = user.getCandidateJwtToken();
+            break;
+
+        default:
+            break;
     }
+    const user_role = user?.user_role; 
 
-    // res.status(statusCode).cookie('token', token, options).cookie('refreshToken', refreshToken, options).json({
-    //     success: true,
-    //     data: user,
-    //     message: "User registered successfully"
-
-    // })
     res.status(statusCode).json({
-        data: {
-            success: true,
-            data: user,
-            message: "User registered successfully",
-            error_code: 0
-        }
-    })
-}
-
-
-module.exports = sendToken;
-
-
-
-const sendCandidateToken = async (user, statusCode, res) => {
-    //creating jwt token
-    const token = user.getCandidateJwtToken();
-    const user_role = user?.user_role;
-    console.log(user?.name,"user_role")
-
-    res.status(200).json({
         success: true,
         data: {
             token,
@@ -47,5 +45,4 @@ const sendCandidateToken = async (user, statusCode, res) => {
         error_code: 0
     })
 }
-
-module.exports = sendCandidateToken;
+module.exports = sendToken;
