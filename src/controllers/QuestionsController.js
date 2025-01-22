@@ -266,7 +266,7 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         // }
         // console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
 
-        const css_ques = questions.filter((v) => v.question_type === "css");
+        const css_ques = questions.filter((v) => v.question_type === "html" && v.difficulty_level === "medium");
         // if (techniModreate?.length) {
         //     while (tech_questions_moderate.length < 15 && tech_questions_moderate.length < techniModreate.length) {
         //         const idx = Math.floor(Math.random() * techniModreate.length);
@@ -347,10 +347,9 @@ exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
             };
         });
 
-        const calculate_css_score = updated_Answers?.filter((val) => val?.question_type === "css" && val?.candidate_answer === val?.answer)
+        const calculate_css_score = updated_Answers?.filter((val) => val?.candidate_answer === val?.answer)
         // const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
         // const calculate_tech_hard_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "hard" && val?.candidate_answer === val?.answer)
-
         await QuestionGeneratorModel.findByIdAndUpdate(
             { _id: candidate_apti_id },
             {
@@ -359,7 +358,7 @@ exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
                 // aptitude_score: calculate_apti_score?.length || 0,
                 // tech_moderate_score: calculate_tech_moderate_score?.length || 0,
                 // tech_hard_score: calculate_tech_hard_score?.length || 0,
-                aptitude_score:calculate_css_score?.length || 0
+                aptitude_score: calculate_css_score?.length || 0
             }
         );
         //
