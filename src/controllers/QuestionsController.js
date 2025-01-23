@@ -3,7 +3,6 @@ const catchAsyncError = require('../middlewares/catchAsyncError');
 const interviewCandidateModel = require('../models/interviewCandidateModel');
 const mcqquestionModel = require('../models/McqQuestionsModel');
 const QuestionGeneratorModel = require('../models/QuestionGeneratorModel');
-const User = require('../models/userModel');
 const ErrorHandler = require('../utils/errorHandling');
 const csv = require('csvtojson');
 const { ObjectId } = require('mongodb');

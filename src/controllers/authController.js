@@ -40,26 +40,6 @@ exports.getUser = catchAsyncError(async (req, res, next) => {
     })
 })
 
-exports.loginUser = catchAsyncError(async (req, res, next) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return next(new ErrorHandler("please enter username & password", 401));
-    }
-
-    //finding user data in database
-    const user = await User.findOne({ username }).select('+password');
-
-    if (!user) {
-        return next(new ErrorHandler("User not found", 401));
-    }
-
-    if (!await user.isValidPassword(password)) {
-        return next(new ErrorHandler("Invalid username or password", 401));
-    }
-
-    sendToken(user, 201, res);
-})
-
 exports.resetJwtToken = catchAsyncError(async (req, res, next) => {
     const { refreshToken } = req.cookies;
     if (!refreshToken) {
@@ -72,22 +52,63 @@ exports.resetJwtToken = catchAsyncError(async (req, res, next) => {
     sendToken(user, 201, res);
 })
 
-exports.logOutUser = (req, res, next) => {
-    res.cookie('token', null, {
-        httpOnly: true,
-        expires: new Date(Date.now())
-    })
+exports.login = catchAsyncError(async (req, res, next) => {
+    const authheader = req.headers.authorization;
+    if (!authheader) {
+        res.setHeader('WWW-Authenticate', 'Basic realm="Protected"');
+        return next(new ErrorHandler("Invalid or missing authorization header", 401));
+    }
 
-    res.cookie('refreshToken', null, {
-        httpOnly: true,
-        expires: new Date(Date.now())
-    })
+    // Basic Autherization  
+    const base64Credentials = authheader.split(' ')[1];
+    const credentials = Buffer.from(base64Credentials, 'base64').toString();
+    const [username, password] = credentials.split(':');
+    if (!username || !password) {
+        if (typeof username != Number) {
+            return next(new ErrorHandler("Invalid username or password", 401));
+        } else {
+            return next(new ErrorHandler("Please provide both username and password", 401));
+        }
+    }
 
-    res.status(200).json({
-        success: true,
-        message: 'logout successfull'
-    })
-}
+    //Finding users
+    let candidateUser;
+    let adraUser;
+    if (isFinite(username)) {
+        const phoneNumber = username;
+        candidateUser = await interviewCandidateModel.findOne({ phoneNumber }).select('+password');
+    } else {
+        adraUser = await User.findOne({ username }).select('+password');
+    }
+
+    const user = candidateUser || adraUser;
+    if (!user) {
+        return next(new ErrorHandler("User not found", 401));
+    }
+
+    // if interview candidates 
+    if (candidateUser) {
+        if (candidateUser?.oneTimeLoggedin) {
+            return next(new ErrorHandler(`The test has already been taken by ${candidateUser?.name}`, 401));
+        }
+
+        const isValidPassword = await user.isCandidateValidPassword(password);
+        if (!isValidPassword) {
+            return next(new ErrorHandler("Invalid username or password", 401));
+        }
+        sendToken(user, 200, res);
+    }
+
+
+    if (adraUser) { 
+        const isValidPassword = await user.isValidPassword(password);
+        if (!isValidPassword) {
+            return next(new ErrorHandler("Invalid username or password", 401));
+        }
+
+        sendToken(user, 200, res);
+    }
+})
 
 exports.forgotPassword = catchAsyncError(async (req, res, next) => {
     const { email } = req.body;
@@ -128,7 +149,6 @@ exports.forgotPassword = catchAsyncError(async (req, res, next) => {
 });
 
 exports.resetPassword = catchAsyncError(async (req, res, next) => {
-
     const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
 
     const user = await User.findOne({
@@ -208,62 +228,3 @@ exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
         })
     }
 })
-
-exports.LogIn = catchAsyncError(async (req, res, next) => {
-    const authheader = req.headers.authorization;
-    if (!authheader) {
-        res.setHeader('WWW-Authenticate', 'Basic realm="Protected"');
-        return next(new ErrorHandler("Invalid or missing authorization header", 401));
-    }
-
-    // Basic Autherization  
-    const base64Credentials = authheader.split(' ')[1];
-    const credentials = Buffer.from(base64Credentials, 'base64').toString();
-    const [username, password] = credentials.split(':');
-    if (!username || !password) {
-        if (typeof username != Number) {
-            return next(new ErrorHandler("Invalid username or password", 401));
-        } else {
-            return next(new ErrorHandler("Please provide both username and password", 401));
-        }
-    }
-
-    //Finding users
-    let candidateUser;
-    let adraUser;
-    if (isFinite(username)) {
-        const phoneNumber = username;
-        candidateUser = await interviewCandidateModel.findOne({ phoneNumber }).select('+password');
-    } else {
-        adraUser = await User.findOne({ username }).select('+password');
-    }
-
-
-    const user = candidateUser || adraUser;
-    if (!user) {
-        return next(new ErrorHandler("User not found", 401));
-    }
-
-    // if interview candidates 
-    if (candidateUser) {
-        if (candidateUser?.oneTimeLoggedin) {
-            return next(new ErrorHandler(`The test has already been taken by ${candidateUser?.name}`, 401));
-        }
-
-        const isValidPassword = await user.isCandidateValidPassword(password);
-        if (!isValidPassword) {
-            return next(new ErrorHandler("Invalid username or password", 401));
-        }
-        sendToken(user, 200, res);
-    }
-
-
-    if (adraUser) { 
-        const isValidPassword = await user.isValidPassword(password);
-        if (!isValidPassword) {
-            return next(new ErrorHandler("Invalid username or password", 401));
-        }
-
-        sendToken(user, 200, res);
-    }
-});
