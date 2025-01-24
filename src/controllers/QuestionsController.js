@@ -286,8 +286,7 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
                     if_question_assigned: true,
                     status: "Test Started",
                     test_StartedOn: new Date(),
-                    test_EndedOn: new Date(Date.now() + 60 * 60 * 1000),
-                    // test_EndedOn: new Date(Date.now() + 3 * 60 * 1000),
+                    test_EndedOn: new Date(Date.now() + 60 * 60 * 1000), 
                 },
                 { new: true }
             );

@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const interviewCandidateModel = require("../models/interviewCandidateModel");
 const QuestionGeneratorModel = require("../models/QuestionGeneratorModel");
 const User = require("../models/userModel");
+const { sha256 } = require("js-sha256");
 
 exports.registerUser = catchAsyncError(async (req, res, next) => {
     const { body, file } = req
@@ -16,6 +17,7 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
     if (!file) {
         return next(new ErrorHandler("Profile image Not found", 401));
     }
+    
 
     const { name, username, email, password, role } = body;
     const user = await User.findOne({ username })
@@ -186,7 +188,7 @@ exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
         sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, canditateExpType,
         previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks } = body;
 
-    const password = "Test@123"
+    const password = sha256("Test@123")
 
     let candidateExperience = ""
     const user = await interviewCandidateModel.findOne({ $or: [{ phoneNumber: { $eq: phoneNumber } }, { email: { $eq: email } }] });
@@ -221,7 +223,7 @@ exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
             success: true,
             data: {
                 username: phoneNumber,
-                password
+                password:'Test@123'
             },
             error_code: 0,
             message: 'Candidate registration success'
