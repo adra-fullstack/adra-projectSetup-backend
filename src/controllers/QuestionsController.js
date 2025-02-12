@@ -120,7 +120,6 @@ exports.uploadQuestionsUsingCsv = catchAsyncError(async (req, res, next) => {
         if (jsonArray.length) {
             // checking if all keys are exist in uploaded csv 
             const filterNonEmptyObject = jsonArray.filter((v) => {
-                console.log(Object.keys(v).includes("question_type"), Object.keys(v).includes("difficulty_level"), Object.keys(v).includes("question"), Object.keys(v).includes("option_1"), Object.keys(v).includes("option_2"), Object.keys(v).includes("option_3"), Object.keys(v).includes("option_4"), Object.keys(v).includes("answer"))
                 if (Object.keys(v).includes("question_type") && Object.keys(v).includes("difficulty_level") && Object.keys(v).includes("question") && Object.keys(v).includes("option_1") && Object.keys(v).includes("option_2") && Object.keys(v).includes("option_3") && Object.keys(v).includes("option_4") && Object.keys(v).includes("answer")) {
                     return v
                 }
@@ -225,6 +224,7 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         let tech_questions_moderate = [];
         let tech_questions_hard = [];
         let apti_questions = [];
+        let reasoning_questions = [];
 
         // Generate technical moderate questions
         const techniModreate = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "moderate");
@@ -253,9 +253,9 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         console.log(tech_questions_hard?.length, "mern HARD", techniHard?.length)
 
         // Generate aptitude questions
-        const aptiQues = questions.filter((v) => v.question_type === "aptitude");
+        const aptiQues = questions.filter((v) => v.question_type === "quantitative");
         if (aptiQues?.length) {
-            while (apti_questions.length < 20 && apti_questions.length < aptiQues.length) {
+            while (apti_questions.length < 10 && apti_questions.length < aptiQues.length) {
                 const idx = Math.floor(Math.random() * aptiQues.length);
                 const isQuestionDuplicated = apti_questions.some((v) => v._id.equals(aptiQues[idx]._id));
                 if (!isQuestionDuplicated) {
@@ -263,11 +263,21 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
                 }
             }
         }
-        console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
+        const reasoningiQues = questions.filter((v) => v.question_type === "logical_reasoning");
+        if (reasoningiQues?.length) {
+            while (reasoning_questions.length < 10 && reasoning_questions.length < reasoningiQues.length) {
+                const idx = Math.floor(Math.random() * reasoningiQues.length);
+                const isQuestionDuplicated = reasoning_questions.some((v) => v._id.equals(reasoningiQues[idx]._id));
+                if (!isQuestionDuplicated) {
+                    reasoning_questions.push(reasoningiQues[idx]);
+                }
+            }
+        }
+        // console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
 
 
         // Combine questions and ensure 60 total
-        var generated_questions = [...apti_questions, ...tech_questions_moderate, ...tech_questions_hard];
+        var generated_questions = [...apti_questions,...reasoning_questions, ...tech_questions_moderate, ...tech_questions_hard];
         while (generated_questions.length < 60 && questions.length > generated_questions.length) {
             const idx = Math.floor(Math.random() * questions.length);
             const isDuplicated = generated_questions.some((q) => q._id.equals(questions[idx]._id));
@@ -297,7 +307,7 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         // Remove answers
         update_generated_data.assigned_questions = update_generated_data?.assigned_questions?.map((v) => {
             const { answer, ...rest } = v;
-            return rest;
+            return v;
         });
 
         res.status(200).json({
@@ -336,7 +346,8 @@ exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
             };
         });
 
-        const calculate_apti_score = updated_Answers?.filter((val) => val?.question_type === "aptitude" && val?.candidate_answer === val?.answer)
+        const calculate_apti_score = updated_Answers?.filter((val) => val?.question_type === "quantitative" && val?.candidate_answer === val?.answer)
+        const calculate_reasoning_score = updated_Answers?.filter((val) => val?.question_type === "logical_reasoning" && val?.candidate_answer === val?.answer)
         const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
         const calculate_tech_hard_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "hard" && val?.candidate_answer === val?.answer)
 
@@ -346,6 +357,7 @@ exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
                 assigned_questions: updated_Answers,
                 status: "Test Completed",
                 aptitude_score: calculate_apti_score?.length || 0,
+                reasoning_score: calculate_reasoning_score?.length || 0,
                 tech_moderate_score: calculate_tech_moderate_score?.length || 0,
                 tech_hard_score: calculate_tech_hard_score?.length || 0
             }
@@ -400,6 +412,7 @@ exports.getInterviewCandidateStatus = catchAsyncError(async (req, res, next) => 
             {
                 $project: {
                     aptitude_score: 1,
+                    reasoning_score: 1,
                     tech_hard_score: 1,
                     tech_moderate_score: 1,
                     test_EndedOn: 1,

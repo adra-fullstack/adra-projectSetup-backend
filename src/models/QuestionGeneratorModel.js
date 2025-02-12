@@ -16,6 +16,7 @@ const QuestionGeneratorSchema = new mongoose.Schema({
     test_StartedOn: Date,
     test_EndedOn: Date,
     aptitude_score: Number,
+    reasoning_score:Number,
     tech_moderate_score: Number,
     tech_hard_score: Number,
 })
