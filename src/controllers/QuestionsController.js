@@ -117,11 +117,10 @@ exports.uploadQuestionsUsingCsv = catchAsyncError(async (req, res, next) => {
 
     if (fileType === "csv") {
         const jsonArray = await csv().fromString(req.file.buffer.toString());
-
+        console.log(jsonArray)
         if (jsonArray.length) {
             // checking if all keys are exist in uploaded csv 
             const filterNonEmptyObject = jsonArray.filter((v) => {
-                console.log(Object.keys(v).includes("question_type"), Object.keys(v).includes("difficulty_level"), Object.keys(v).includes("question"), Object.keys(v).includes("option_1"), Object.keys(v).includes("option_2"), Object.keys(v).includes("option_3"), Object.keys(v).includes("option_4"), Object.keys(v).includes("answer"))
                 if (Object.keys(v).includes("question_type") && Object.keys(v).includes("difficulty_level") && Object.keys(v).includes("question") && Object.keys(v).includes("option_1") && Object.keys(v).includes("option_2") && Object.keys(v).includes("option_3") && Object.keys(v).includes("option_4") && Object.keys(v).includes("answer")) {
                     return v
                 }
@@ -148,8 +147,11 @@ exports.uploadQuestionsUsingCsv = catchAsyncError(async (req, res, next) => {
                 }
 
                 const checkingisValueMissing = newList.filter((v) => {
+                    console.log(v?.id, v.question_type && v.difficulty_level && v.question && v.option_1 && v.option_2 && v.option_3 && v.option_4 && v.answer)
                     return v.question_type && v.difficulty_level && v.question && v.option_1 && v.option_2 && v.option_3 && v.option_4 && v.answer
                 })
+
+                console.log(checkingisValueMissing?.length, newList.length)
 
                 if (checkingisValueMissing.length) {
                     if (checkingisValueMissing.length === newList.length) {
@@ -266,7 +268,7 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         // }
         // console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
 
-        const css_ques = questions.filter((v) => v.question_type === "html" && v.difficulty_level === "medium");
+        const css_ques = questions.filter((v) => v.question_type === "css");
         // if (techniModreate?.length) {
         //     while (tech_questions_moderate.length < 15 && tech_questions_moderate.length < techniModreate.length) {
         //         const idx = Math.floor(Math.random() * techniModreate.length);
@@ -347,7 +349,7 @@ exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
             };
         });
 
-        const calculate_css_score = updated_Answers?.filter((val) => val?.candidate_answer === val?.answer)
+        const calculate_css_score = updated_Answers?.filter((val) => val.question_type === "css" && val?.candidate_answer === val?.answer)
         // const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
         // const calculate_tech_hard_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "hard" && val?.candidate_answer === val?.answer)
         await QuestionGeneratorModel.findByIdAndUpdate(
