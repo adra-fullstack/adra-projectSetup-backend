@@ -42,12 +42,12 @@ io.on("connection", socket);
 
 connectDatabase().catch(console.dir);
 
-// attendance scheduling 
-var task = cron.schedule('00 00 * * *', () => {
-    console.log("runs every night 12'0 clock");
+// // attendance scheduling 
+// var task = cron.schedule('00 00 * * *', () => {
+//     console.log("runs every night 12'0 clock");
 
-    task.stop();
-});
+//     task.stop();
+// });
 
 
 const server = httpServer.listen(process.env.PORT, () => {
