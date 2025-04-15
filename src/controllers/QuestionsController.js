@@ -227,9 +227,9 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         let reasoning_questions = [];
 
         // Generate technical moderate questions
-        const techniModreate = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "moderate");
+        const techniModreate = questions.filter((v) => v.question_type === "python" && v.difficulty_level === "moderate");
         if (techniModreate?.length) {
-            while (tech_questions_moderate.length < 15 && tech_questions_moderate.length < techniModreate.length) {
+            while (tech_questions_moderate.length < 50 && tech_questions_moderate.length < techniModreate.length) {
                 const idx = Math.floor(Math.random() * techniModreate.length);
                 const isQuestionDuplicated = tech_questions_moderate.some((v) => v._id.equals(techniModreate[idx]._id));
                 if (!isQuestionDuplicated) {
@@ -237,20 +237,20 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
                 }
             }
         }
-        console.log(tech_questions_moderate?.length, "mern moderate", techniModreate?.length)
+        console.log(tech_questions_moderate?.length, "python moderate", techniModreate?.length)
 
         // Generate technical hard questions
-        const techniHard = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "hard");
-        if (techniHard?.length) {
-            while (tech_questions_hard.length < 25 && tech_questions_hard.length < techniHard.length) {
-                const idx = Math.floor(Math.random() * techniHard.length);
-                const isQuestionDuplicated = tech_questions_hard.some((v) => v._id.equals(techniHard[idx]._id));
-                if (!isQuestionDuplicated) {
-                    tech_questions_hard.push(techniHard[idx]);
-                }
-            }
-        }
-        console.log(tech_questions_hard?.length, "mern HARD", techniHard?.length)
+        // const techniHard = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "hard");
+        // if (techniHard?.length) {
+        //     while (tech_questions_hard.length < 25 && tech_questions_hard.length < techniHard.length) {
+        //         const idx = Math.floor(Math.random() * techniHard.length);
+        //         const isQuestionDuplicated = tech_questions_hard.some((v) => v._id.equals(techniHard[idx]._id));
+        //         if (!isQuestionDuplicated) {
+        //             tech_questions_hard.push(techniHard[idx]);
+        //         }
+        //     }
+        // }
+        // console.log(tech_questions_hard?.length, "mern HARD", techniHard?.length)
 
         // Generate aptitude questions
         const aptiQues = questions.filter((v) => v.question_type === "quantitative");
@@ -276,8 +276,18 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
         // console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
 
 
+        // // Combine questions and ensure 60 total
+        // var generated_questions = [...apti_questions, ...tech_questions_moderate, ...tech_questions_hard];
+        // while (generated_questions.length < 60 && questions.length > generated_questions.length) {
+        //     const idx = Math.floor(Math.random() * questions.length);
+        //     const isDuplicated = generated_questions.some((q) => q._id.equals(questions[idx]._id));
+        //     if (!isDuplicated) {
+        //         generated_questions.push(questions[idx]);
+        //     }
+        // }
+
         // Combine questions and ensure 60 total
-        var generated_questions = [...apti_questions,...reasoning_questions, ...tech_questions_moderate, ...tech_questions_hard];
+        var generated_questions = [...apti_questions, ...tech_questions_moderate];
         while (generated_questions.length < 60 && questions.length > generated_questions.length) {
             const idx = Math.floor(Math.random() * questions.length);
             const isDuplicated = generated_questions.some((q) => q._id.equals(questions[idx]._id));
@@ -296,11 +306,12 @@ exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
                     if_question_assigned: true,
                     status: "Test Started",
                     test_StartedOn: new Date(),
-                    test_EndedOn: new Date(Date.now() + 60 * 60 * 1000), 
+                    test_EndedOn: new Date(Date.now() + 60 * 60 * 1000),
                 },
                 { new: true }
             );
         } else {
+            console.log(question_gernerator)
             update_generated_data = question_gernerator[0];
         }
 
@@ -346,9 +357,8 @@ exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
             };
         });
 
-        const calculate_apti_score = updated_Answers?.filter((val) => val?.question_type === "quantitative" && val?.candidate_answer === val?.answer)
-        const calculate_reasoning_score = updated_Answers?.filter((val) => val?.question_type === "logical_reasoning" && val?.candidate_answer === val?.answer)
-        const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
+        const calculate_apti_score = updated_Answers?.filter((val) => val?.question_type === "aptitude" && val?.candidate_answer === val?.answer)
+        const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "python" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
         const calculate_tech_hard_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "hard" && val?.candidate_answer === val?.answer)
 
         await QuestionGeneratorModel.findByIdAndUpdate(
