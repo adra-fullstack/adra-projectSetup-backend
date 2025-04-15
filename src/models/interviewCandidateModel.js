@@ -3,9 +3,11 @@ const validator = require('validator');
 const bycrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { type } = require("os");
 
 const interviewCandidateSchema = new mongoose.Schema({
+    campaign_id: {
+        type: mongoose.Schema.Types.ObjectId,
+    },
     name: {
         type: String,
         required: [true, "name required"]
@@ -99,7 +101,6 @@ const interviewCandidateSchema = new mongoose.Schema({
     },
     canditateExpType: {
         type: String,
-        // required: [true, "canditateExpType required"]
     },
     candidateQualification: String,
     previousCompanyName: {

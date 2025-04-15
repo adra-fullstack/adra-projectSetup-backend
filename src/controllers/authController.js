@@ -2,7 +2,7 @@ const ErrorHandler = require("../utils/errorHandling");
 const catchAsyncError = require("../middlewares/catchAsyncError");
 
 const sendEmail = require("../utils/email");
-const sendToken = require("../utils/jwt"); 
+const sendToken = require("../utils/jwt");
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
@@ -10,6 +10,7 @@ const interviewCandidateModel = require("../models/interviewCandidateModel");
 const QuestionGeneratorModel = require("../models/QuestionGeneratorModel");
 const User = require("../models/userModel");
 const { sha256 } = require("js-sha256");
+const { CampaignModel } = require("../models/campaignModel");
 
 exports.registerUser = catchAsyncError(async (req, res, next) => {
     const { body, file } = req
@@ -17,7 +18,7 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
     if (!file) {
         return next(new ErrorHandler("Profile image Not found", 401));
     }
-    
+
 
     const { name, username, email, password, role } = body;
     const user = await User.findOne({ username })
@@ -102,7 +103,7 @@ exports.login = catchAsyncError(async (req, res, next) => {
     }
 
 
-    if (adraUser) { 
+    if (adraUser) {
         const isValidPassword = await user.isValidPassword(password);
         if (!isValidPassword) {
             return next(new ErrorHandler("Invalid username or password", 401));
@@ -172,32 +173,29 @@ exports.resetPassword = catchAsyncError(async (req, res, next) => {
     user.resetPasswordToken = undefined;
     user.resetPasswordTokenExpire = undefined;
     await user.save({ validateBeforeSave: false });
-
     sendToken(user, 201, res);
 })
 
 exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
-    // const { body, file } = req
-    const { body } = req
-
-    // if (!file) {
-    //     return next(new ErrorHandler("image Not found", 401));
-    // }
-
     const { name, age, phoneNumber, email, gender, address, parentName, parentOccupation, maritalStatus, childrens, siblings, addressIfAnyCbe,
         sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, canditateExpType,
-        previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks } = body;
+        previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks } = req.body;
 
-    const password = sha256("Test@123")
-
+    let capitalizedEmail = email.charAt(0).toUpperCase() + email.slice(1);
+    let create_password = capitalizedEmail.slice(0, 4) + '@' + phoneNumber.slice(0, 3);
+    let password = sha256(create_password)
     let candidateExperience = ""
+
+    const campaign_id = await CampaignModel.findOne({ campaign_name: canditateRole }, { _id: 1 });
     const user = await interviewCandidateModel.findOne({ $or: [{ phoneNumber: { $eq: phoneNumber } }, { email: { $eq: email } }] });
+    console.log(campaign_id)
 
     if (user) {
         return next(new ErrorHandler("phone number (or) email already exist", 401));
     } else {
         // const avatar = file.originalname;
         const newUser = await interviewCandidateModel.create({
+            campaign_id,
             name, age, phoneNumber, email, gender, address, password, parentName, parentOccupation, maritalStatus, childrens, siblings, addressIfAnyCbe,
             sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, canditateExpType,
             previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks
@@ -223,7 +221,7 @@ exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
             success: true,
             data: {
                 username: phoneNumber,
-                password:'Test@123'
+                password: create_password
             },
             error_code: 0,
             message: 'Candidate registration success'

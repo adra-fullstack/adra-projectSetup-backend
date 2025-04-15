@@ -7,8 +7,11 @@ exports.displayCampaign = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            campaignCount: campaignDetails.length,
-            campaign: campaignDetails,
+            error_code: 0,
+            data: {
+                campaignCount: campaignDetails.length,
+                campaign: campaignDetails,
+            },
             message: "Campaign fetched successfully"
         })
 
@@ -37,17 +40,17 @@ exports.candidatesSpecificCampaign = async (req, res) => {
     try {
 
         const requestParams = req.body
-        const CampaignId = await CampaignModel.findById({_id :requestParams.campaign_id })
+        const CampaignId = await CampaignModel.findById({ _id: requestParams.campaign_id })
 
         if (!CampaignId) {
             return res.status(404).json({
                 success: false,
                 message: "Campaign not found"
             })
-        } 
+        }
 
-        const specificCandidates = await CandidateModel.find({campaign_id : requestParams.campaign_id}).forEach((data)=>data);
-  
+        const specificCandidates = await CandidateModel.find({ campaign_id: requestParams.campaign_id }).forEach((data) => data);
+
         res.status(200).json({
             success: true,
             Candidates_count: specificCandidates.length,
@@ -62,12 +65,20 @@ exports.candidatesSpecificCampaign = async (req, res) => {
 
 // Create
 exports.createCampaign = async (req, res) => {
+    const { job_title, interview_date } = req.body;
+    if (!job_title || !interview_date) {
+        return res.status(400).json({
+            success: false,
+            message: "Please fill all the fields"
+        })
+    }
+
     try {
         const campaignDetails = await CampaignModel.create(req.body)
 
         res.status(200).json({
-            success: true, 
-            campaign: campaignDetails,
+            success: true,
+            data: campaignDetails,
             message: "Campaign created successfully"
         })
 
@@ -100,9 +111,8 @@ exports.createCandidates = async (req, res) => {
     }
 }
 
-
 // Update
-exports.updateCampaign = async (req,res) => {
+exports.updateCampaign = async (req, res) => {
     try {
 
         const requestDetails = req.body
@@ -116,7 +126,7 @@ exports.updateCampaign = async (req,res) => {
             })
         }
 
-        await CampaignModel.findByIdAndUpdate(requestDetails._id , requestDetails , {new : true})
+        await CampaignModel.findByIdAndUpdate(requestDetails._id, requestDetails, { new: true })
 
         const Campaign = await CampaignModel.find()
 
@@ -136,7 +146,7 @@ exports.updateCampaign = async (req,res) => {
     }
 }
 
-exports.updateCandidate = async (req,res) => {
+exports.updateCandidate = async (req, res) => {
     try {
 
         const requestDetails = req.body
@@ -150,7 +160,7 @@ exports.updateCandidate = async (req,res) => {
             })
         }
 
-        await CandidateModel.findByIdAndUpdate(requestDetails._id , requestDetails , {new : true})
+        await CandidateModel.findByIdAndUpdate(requestDetails._id, requestDetails, { new: true })
 
         const Candidate = await CandidateModel.find()
 
@@ -170,10 +180,8 @@ exports.updateCandidate = async (req,res) => {
     }
 }
 
-
-
 // update candidate status
-exports.updateCandidateStatus = async (req,res) => {
+exports.updateCandidateStatus = async (req, res) => {
     try {
 
         const requestDetails = req.body
@@ -187,7 +195,7 @@ exports.updateCandidateStatus = async (req,res) => {
             })
         }
 
-        await CandidateModel.findByIdAndUpdate(requestDetails._id , requestDetails , {new : true})
+        await CandidateModel.findByIdAndUpdate(requestDetails._id, requestDetails, { new: true })
 
         const Candidate = await CandidateModel.find()
 
