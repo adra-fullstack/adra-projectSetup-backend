@@ -404,12 +404,6 @@ exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
 
 exports.getInterviewCandidateStatus = catchAsyncError(async (req, res, next) => {
     try {
-        // const userId = req.user?.id;
-        // const user = await User.findById({ _id: userId });
-        // if (!user) {
-        //     return next(new ErrorHandler("User not found", 404))
-        // }
-
         const getCandidates = await QuestionGeneratorModel.aggregate([
             {
                 $lookup: {

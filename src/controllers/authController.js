@@ -178,7 +178,7 @@ exports.resetPassword = catchAsyncError(async (req, res, next) => {
 
 exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
     const { name, age, phoneNumber, email, gender, address, parentName, parentOccupation, maritalStatus, childrens, siblings, addressIfAnyCbe,
-        sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, canditateExpType,
+        sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, campaign_id, canditateExpType,
         previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks } = req.body;
 
     let capitalizedEmail = email.charAt(0).toUpperCase() + email.slice(1);
@@ -186,45 +186,59 @@ exports.registerInterviewCandidate = catchAsyncError(async (req, res, next) => {
     let password = sha256(create_password)
     let candidateExperience = ""
 
-    const campaign_id = await CampaignModel.findOne({ campaign_name: canditateRole }, { _id: 1 });
     const user = await interviewCandidateModel.findOne({ $or: [{ phoneNumber: { $eq: phoneNumber } }, { email: { $eq: email } }] });
-    console.log(campaign_id)
 
-    if (user) {
-        return next(new ErrorHandler("phone number (or) email already exist", 401));
-    } else {
-        // const avatar = file.originalname;
-        const newUser = await interviewCandidateModel.create({
-            campaign_id,
-            name, age, phoneNumber, email, gender, address, password, parentName, parentOccupation, maritalStatus, childrens, siblings, addressIfAnyCbe,
-            sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, canditateExpType,
-            previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks
-        });
+    if (user) return next(new ErrorHandler("phone number (or) email already exist", 401));
 
-        if (newUser.canditateExpType === 0) {
-            candidateExperience = "fresher"
-        }
-        else if (newUser.canditateExpType > 0 && newUser.canditateExpType <= 0) {
-            candidateExperience = "intermediate"
-        }
-        else {
-            candidateExperience = "hard"
-        }
+    const newUser = await interviewCandidateModel.create({
+        campaign_id, name, age, phoneNumber, email, gender, address, password, parentName, parentOccupation, maritalStatus, childrens, siblings, addressIfAnyCbe,
+        sslcSchoolName, hscSchoolName, collegeName, sslcMarks, hscMarks, collegeMarks, canditateRole, campaign_id, canditateExpType,
+        previousCompanyName, desigination, experience, currentSalary, expectedSalary, candidateQualification, role, remarks
+    });
 
-        await QuestionGeneratorModel.create({
-            candidate_id: newUser._id,
-            candidate_role: newUser.canditateRole,
-            difficulty_level: candidateExperience
-        })
+    if (newUser.canditateExpType === 0) candidateExperience = "fresher"
+    else if (newUser.canditateExpType > 0 && newUser.canditateExpType <= 0) candidateExperience = "intermediate"
+    else candidateExperience = "hard"
 
-        res.status(200).json({
-            success: true,
-            data: {
-                username: phoneNumber,
-                password: create_password
-            },
-            error_code: 0,
-            message: 'Candidate registration success'
-        })
-    }
+    await QuestionGeneratorModel.create({
+        candidate_id: newUser._id,
+        candidate_role: newUser.canditateRole,
+        difficulty_level: candidateExperience
+    })
+
+    res.status(200).json({
+        success: true,
+        data: {
+            username: phoneNumber,
+            password: create_password
+        },
+        error_code: 0,
+        message: 'Candidate registration success'
+    })
 })
+
+exports.get_registration_roles = catchAsyncError(async (req, res, next) => {
+    const { check_campaign } = req.body;
+
+    const start = new Date(check_campaign);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const available_roles = await CampaignModel.find(
+        { interview_date: { $gte: start, $lt: end } },
+        { job_title: 1, _id: 1 }
+    );
+
+    if (available_roles.length === 0) {
+        return next(new ErrorHandler("No roles available for this date", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        error_code: 0,
+        data: available_roles,
+        message: 'Available roles fetched successfully'
+    });
+});
