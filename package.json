@@ -3,38 +3,37 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "nodemon server.js",
-    "dev": "set NODE_ENV=development&&nodemon server.js",
-    "prod": "set NODE_ENV=production&&nodemon server.js",
-    "seeder": "node utils/seeder.js"
+    "start": "cross-env NODE_ENV=production PORT=3000 nodemon server.js",
+    "dev": "cross-env NODE_ENV=development PORT=8000 nodemon server.js",
+    "local_dev": "cross-env NODE_ENV=production PORT=8000 nodemon server.js",
+    "prod": "cross-env NODE_ENV=production PORT=3000 nodemon server.js"
   },
   "author": "krishna kumar",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.846.0",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
     "convert-csv-to-json": "^2.49.0",
-    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
     "crypto": "^1.0.1",
+    "crypto-js": "^4.2.0",
     "csvtojson": "^2.0.10",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "js-sha256": "^0.11.0",
     "jsonwebtoken": "^9.0.2",
+    "luxon": "^3.7.1",
+    "mime-types": "^3.0.1",
     "mongodb": "^6.9.0",
     "mongoose": "^8.4.5",
     "multer": "^1.4.5-lts.1",
-    "node-cron": "^3.0.3",
-    "nodemailer": "^6.9.14",
+    "nodemailer": "^7.0.5",
     "nodemon": "^3.1.4",
-    "socket.io": "^4.7.5",
     "uuid": "^10.0.0",
     "validator": "^13.12.0"
-  },
-  "devDependencies": {
-    "pm2": "^5.4.3"
   }
 }

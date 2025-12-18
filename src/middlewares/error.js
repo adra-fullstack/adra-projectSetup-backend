@@ -1,93 +1,39 @@
+const send_response = require("../functionPieces/send_reposnse");
+
 module.exports = (err, req, res, next) => {
-    err.statusCode = err.statusCode || 500
+  if (res.headersSent) return next(err);
 
-    if (process.env.NODE_ENV === "development") {
-        let message = err.message;
-        let error = new Error(message)
+  let message = err.message || "Internal Server Error";
+  let statusCode = err.statusCode || 500;
 
-        if (err.name === "ValidationError") {
-            message = Object.values(err.errors).map(value => value.message)
-            error = new Error(message)
-            err.statusCode = 404
-        }
+  if (err.name === "ValidationError") {
+    message = Object.values(err.errors).map((value) => value.message).join(", ");
+    statusCode = 201;
+  } else if (err.name === "CastError") {
+    message = `Resource Not Found: ${err.path}`;
+    statusCode = 404;
+  } else if (err.code === 11000) {
+    message = `Email ${Object.values(err.keyValue)} already exists`;
+    statusCode = 201;
+  } else if (err.name === "JSONWebTokenError") {
+    message = `JSON web token is invalid. Try again.`;
+    statusCode = 401;
+  } else if (err.name === "TokenExpiredError") {
+    message = `JSON web token is expired. Try again.`;
+    statusCode = 401;
+  }
 
-        if (err.name === "CastError") {
-            message = `Resource Not Found: ${err.path}`;
-            error = new Error(message)
-            err.statusCode = 404
-        }
+  if (err.statusCode === 404 && !message.includes("Not Found")) message = "Resource not found";
 
-        if (err.code === 11000) {
-            message = `Email ${Object.values(err.keyValue)} already exist`;
-            error = new Error(message);
-            err.statusCode = 400
-        }
+  statusCode = statusCode || 500;
+  message = message || "Internal Server Error";
 
-        if (err.name === 'JSONWebTokenError') {
-            message = `JSON web token is invalid. try again`;
-            error = new Error(message);
-            err.statusCode = 401
-        }
-
-        if (err.name === 'TokenExpiredError') {
-            message = `JSON web token is expired. try again`;
-            error = new Error(message);
-            err.statusCode = 401
-        }
-
-
-        res.status(200).json({
-            // data: {
-                success: false,
-                message: error.message || 'Internal Server Error',
-                data: {},
-                error_code: err.statusCode || 0
-            // }
-        })
-    }
-
-    if (process.env.NODE_ENV === "production") {
-        let message = err.message;
-        let error = new Error(message)
-
-        if (err.name === "ValidationError") {
-            message = Object.values(err.errors).map(value => value.message)
-            error = new Error(message)
-            err.statusCode = 201
-        }
-
-        if (err.name === "CastError") {
-            message = `Resource Not Found: ${err.path}`;
-            error = new Error(message)
-            err.statusCode = 201
-        }
-
-        if (err.code === 11000) {
-            message = `Email ${Object.values(err.keyValue)} already exist`;
-            error = new Error(message);
-            err.statusCode = 201
-        }
-
-        if (err.name === 'JSONWebTokenError') {
-            message = `JSON web token is invalid. try again`;
-            error = new Error(message);
-            err.statusCode = 401
-        }
-
-        if (err.name === 'TokenExpiredError') {
-            message = `JSON web token is expired. try again`;
-            error = new Error(message);
-            err.statusCode = 401
-        }
-
-
-        res.status(200).json({
-            // data: {
-                success: false,
-                message: error.message || 'Internal Server Error',
-                data: {},
-                error_code: err.statusCode || 0
-            // }
-        })
-    }
-}
+  return send_response(
+    res,
+    statusCode,
+    false,
+    statusCode,
+    {},
+    message
+  );
+};

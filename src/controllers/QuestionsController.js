@@ -1,5 +1,8 @@
+const { default: mongoose } = require('mongoose');
 const { HrInterviewFilter } = require('../functionPieces/HrInterviewFilter');
+const send_response = require('../functionPieces/send_reposnse');
 const catchAsyncError = require('../middlewares/catchAsyncError');
+const { CampaignModel } = require('../models/campaignModel');
 const interviewCandidateModel = require('../models/interviewCandidateModel');
 const mcqquestionModel = require('../models/McqQuestionsModel');
 const QuestionGeneratorModel = require('../models/QuestionGeneratorModel');
@@ -7,100 +10,57 @@ const ErrorHandler = require('../utils/errorHandling');
 const csv = require('csvtojson');
 const { ObjectId } = require('mongodb');
 
+// Questions CRUD 
 exports.createQuestions = catchAsyncError(async (req, res, next) => {
     const { flag, data } = req.body;
     const questionAddedBy = req.user.role;
     const userId = req.user.id;
 
-    if (flag === "mcq") {
+    if (flag !== "mcq") next(new ErrorHandler("flag required Ex:aptitude,reasoning,technical question", 201))
+    else {
         const add_UserId_And_AddedBy = data.map((v) => {
             return { ...v, questionAddedBy, userId }
         })
 
         const questions = await mcqquestionModel.insertMany(add_UserId_And_AddedBy);
-
-        res.status(200).json({
-            success: true,
-            questions,
-            message: "Question insterted successfully"
-        })
-        return
-    } else {
-        return next(new ErrorHandler("flag required Ex:aptitude,reasoning,technical question", 404))
+        send_response(res, 200, true, 0, questions, "Question insterted successfully");
     }
 });
 
 exports.updateQuestions = catchAsyncError(async (req, res, next) => {
-    const validatingQuestion_byId = await mcqquestionModel.findById(req.body._id)
-    if (!validatingQuestion_byId) {
-        return next(new ErrorHandler("Question not found", 404))
-    }
+    const { body } = req;
+    if (!body) return next(new ErrorHandler("Question id required", 201))
 
-    const updateQuestion = await mcqquestionModel.findByIdAndUpdate(req.body._id, req.body, {
+    const validatingQuestion_byId = await mcqquestionModel.findById(body._id)
+    if (!validatingQuestion_byId) return next(new ErrorHandler("Question not found", 201))
+
+    const updateQuestion = await mcqquestionModel.findByIdAndUpdate(body._id, body, {
         new: true,
         runValidators: true
     })
-
-    res.status(200).json({
-        success: true,
-        updateQuestion,
-        message: "Question updates successfully"
-    })
+    send_response(res, 200, true, 0, updateQuestion, "Question updated successfully");
 })
 
 exports.deleteQuestions = catchAsyncError(async (req, res, next) => {
     const { id } = req.params;
     const { question_type } = req.body;
-    if (!id) {
-        return next(new ErrorHandler("question_id required", 404))
-    }
 
-    if (!question_type) {
-        return next(new ErrorHandler("question_type required", 404))
-    }
+    if (!id) return next(new ErrorHandler("question_id required", 201))
+    if (!question_type) return next(new ErrorHandler("question_type required", 201))
 
     const deleteQuestion = await mcqquestionModel.findById(id)
-
-    if (!deleteQuestion) {
-        return next(new ErrorHandler("Questions not found", 400))
-    }
+    if (!deleteQuestion) return next(new ErrorHandler("Questions not found", 201))
 
     await mcqquestionModel.findByIdAndDelete(id);
     const quesData = await HrInterviewFilter(question_type);
-    res.status(200).json({
-        success: true,
-        data: quesData,
-        message: "Question deleted successfully"
-    })
+    send_response(res, 200, true, 0, quesData, "Question deleted successfully");
 })
 
 exports.getAllQuestions = catchAsyncError(async (req, res, next) => {
     const { quesType } = req.body;
 
     const quesData = await HrInterviewFilter(quesType);
-    res.status(200).json({
-        success: true,
-        data: quesData,
-        message: "All questions fetched successfully"
-    })
-})
-
-exports.getQuestionTypes = catchAsyncError(async (req, res, next) => {
-    const questions = await mcqquestionModel.find({}, { question_type: 1, _id: 0 })
-
-    let question_types = [];
-    questions.forEach((ques) => {
-        if (!question_types.includes(ques.question_type)) {
-            question_types[question_types.length] = ques.question_type
-        }
-    })
-
-    res.status(200).json({
-        success: true,
-        question_types,
-        random_array,
-        message: "question types fetched successfully"
-    })
+    send_response(res, 200, true, 0, quesData, "All questions fetched successfully");
 })
 
 exports.uploadQuestionsUsingCsv = catchAsyncError(async (req, res, next) => {
@@ -108,10 +68,7 @@ exports.uploadQuestionsUsingCsv = catchAsyncError(async (req, res, next) => {
     // const questionAddedBy = req.user.role;
     // const userId = req.user.id;
 
-    if (!file) {
-        return next(new ErrorHandler("No csv found", 404))
-    }
-
+    if (!file) return next(new ErrorHandler("No csv found", 201))
     const fileType = file.mimetype.split('/')[1]
 
     if (fileType === "csv") {
@@ -169,284 +126,331 @@ exports.uploadQuestionsUsingCsv = catchAsyncError(async (req, res, next) => {
                         })
 
                         const questions = await mcqquestionModel.insertMany(makingNewArray);
-
-                        res.status(200).json({
-                            success: true,
-                            data: questions,
-                            message: 'Csv questions uploaded successfully'
-                        })
+                        send_response(res, 200, true, 0, questions, "Csv questions uploaded successfully");
                     }
                     else {
-                        res.status(400).json({
-                            success: false,
-                            message: 'values are missing in somewhere check and reupload'
-                        })
+                        return next(new ErrorHandler("Some values are missing in the csv file, please check and reupload", 201))
                     }
                 } else {
-                    res.status(200).json({
-                        success: false,
-                        message: 'This all questions are already uploaded'
-                    })
+                    return next(new ErrorHandler('This all questions are already uploaded', 201))
                 }
             } else {
-                res.status(400).json({
-                    success: false,
-                    message: 'The uploaded csv file does not contain following keys Like:question_type,question,option_1,option_2,option_3,option_4,answer'
-                })
+                return next(new ErrorHandler("The uploaded csv file does not contain following keys Like:question_type,question,option_1,option_2,option_3,option_4,answer", 201))
             }
         } else {
-            res.status(400).json({
-                success: false,
-                message: 'The uploaded file does not have questions'
-            })
+            return next(new ErrorHandler("The uploaded file does not have questions", 201))
         }
     } else {
-        res.status(400).json({
-            success: false,
-            message: 'The uploaded file was not a matched format'
-        })
+        return next(new ErrorHandler("The uploaded file was not a matched format, please upload a csv file", 201))
     }
 })
 
-exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
-    try {
-        const userId = req.user?.id;
-        const question_gernerator = await QuestionGeneratorModel.find({ candidate_id: userId });
-
-        if (!question_gernerator) {
-            return next(new ErrorHandler("User not found", 404));
-        }
-
-        const candidate_apti_id = question_gernerator[0]?._id;
-        const if_question_assigned = question_gernerator[0]?.if_question_assigned;
-
-        const questions = await mcqquestionModel.find();
-        let tech_questions_moderate = [];
-        let tech_questions_hard = [];
-        let apti_questions = [];
-        let reasoning_questions = [];
-
-        // Generate technical moderate questions
-        const techniModreate = questions.filter((v) => v.question_type === "python" && v.difficulty_level === "moderate");
-        if (techniModreate?.length) {
-            while (tech_questions_moderate.length < 50 && tech_questions_moderate.length < techniModreate.length) {
-                const idx = Math.floor(Math.random() * techniModreate.length);
-                const isQuestionDuplicated = tech_questions_moderate.some((v) => v._id.equals(techniModreate[idx]._id));
-                if (!isQuestionDuplicated) {
-                    tech_questions_moderate.push(techniModreate[idx]);
-                }
+// Delete duplicate questions
+exports.deleteDuplicateQuestions = catchAsyncError(async (req, res, next) => { 
+    const duplicates = await mcqquestionModel.aggregate([
+        {
+            $group: {
+                _id: { question: "$question", answer: "$answer" },
+                ids: { $push: "$_id" },
+                count: { $sum: 1 }
             }
-        }
-        console.log(tech_questions_moderate?.length, "python moderate", techniModreate?.length)
-
-        // Generate technical hard questions
-        // const techniHard = questions.filter((v) => v.question_type === "mern" && v.difficulty_level === "hard");
-        // if (techniHard?.length) {
-        //     while (tech_questions_hard.length < 25 && tech_questions_hard.length < techniHard.length) {
-        //         const idx = Math.floor(Math.random() * techniHard.length);
-        //         const isQuestionDuplicated = tech_questions_hard.some((v) => v._id.equals(techniHard[idx]._id));
-        //         if (!isQuestionDuplicated) {
-        //             tech_questions_hard.push(techniHard[idx]);
-        //         }
-        //     }
-        // }
-        // console.log(tech_questions_hard?.length, "mern HARD", techniHard?.length)
-
-        // Generate aptitude questions
-        const aptiQues = questions.filter((v) => v.question_type === "quantitative");
-        if (aptiQues?.length) {
-            while (apti_questions.length < 10 && apti_questions.length < aptiQues.length) {
-                const idx = Math.floor(Math.random() * aptiQues.length);
-                const isQuestionDuplicated = apti_questions.some((v) => v._id.equals(aptiQues[idx]._id));
-                if (!isQuestionDuplicated) {
-                    apti_questions.push(aptiQues[idx]);
-                }
-            }
-        }
-        const reasoningiQues = questions.filter((v) => v.question_type === "logical_reasoning");
-        if (reasoningiQues?.length) {
-            while (reasoning_questions.length < 10 && reasoning_questions.length < reasoningiQues.length) {
-                const idx = Math.floor(Math.random() * reasoningiQues.length);
-                const isQuestionDuplicated = reasoning_questions.some((v) => v._id.equals(reasoningiQues[idx]._id));
-                if (!isQuestionDuplicated) {
-                    reasoning_questions.push(reasoningiQues[idx]);
-                }
-            }
-        }
-        // console.log(apti_questions?.length, "aptiQues", aptiQues?.length)
-
-
-        // // Combine questions and ensure 60 total
-        // var generated_questions = [...apti_questions, ...tech_questions_moderate, ...tech_questions_hard];
-        // while (generated_questions.length < 60 && questions.length > generated_questions.length) {
-        //     const idx = Math.floor(Math.random() * questions.length);
-        //     const isDuplicated = generated_questions.some((q) => q._id.equals(questions[idx]._id));
-        //     if (!isDuplicated) {
-        //         generated_questions.push(questions[idx]);
-        //     }
-        // }
-
-        // Combine questions and ensure 60 total
-        var generated_questions = [...apti_questions, ...tech_questions_moderate];
-        while (generated_questions.length < 60 && questions.length > generated_questions.length) {
-            const idx = Math.floor(Math.random() * questions.length);
-            const isDuplicated = generated_questions.some((q) => q._id.equals(questions[idx]._id));
-            if (!isDuplicated) {
-                generated_questions.push(questions[idx]);
-            }
+        },
+        { $match: { count: { $gt: 1 } } }
+    ]);
+    if (duplicates.length) {
+        for (const doc of duplicates) {
+            const idsToDelete = doc.ids.slice(1);
+            await mcqquestionModel.deleteMany({ _id: { $in: idsToDelete } });
         }
 
-        // Update or send questions
-        let update_generated_data;
-        if (!if_question_assigned) {
-            update_generated_data = await QuestionGeneratorModel.findByIdAndUpdate(
-                { _id: candidate_apti_id },
-                {
-                    assigned_questions: generated_questions,
-                    if_question_assigned: true,
-                    status: "Test Started",
-                    test_StartedOn: new Date(),
-                    test_EndedOn: new Date(Date.now() + 60 * 60 * 1000),
-                },
-                { new: true }
-            );
-        } else {
-            console.log(question_gernerator)
-            update_generated_data = question_gernerator[0];
-        }
+        send_response(res, 200, true, 0, duplicates, "The duplicate questions have been deleted successfully");
+    } else {
+        return next(new ErrorHandler("No duplicate questions found", 200))
 
-        // Remove answers
-        update_generated_data.assigned_questions = update_generated_data?.assigned_questions?.map((v) => {
-            const { answer, ...rest } = v;
-            return v;
-        });
-
-        res.status(200).json({
-            success: true,
-            error_code: 0,
-            data: update_generated_data,
-            message: "Questions fetched successfully",
-        });
-    } catch (Err) {
-        res.status(500).json({
-            success: false,
-            message: Err?.message,
-        });
     }
-});
+})
 
-exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
-    try {
-        const userId = req.user?.id;
-        const candidateAnswers = req.body;
-        const question_gernerator = await QuestionGeneratorModel.find({ candidate_id: userId });
-        if (!question_gernerator) {
-            return next(new ErrorHandler("User not found", 404))
+// Get question types and their difficulty levels
+exports.getQuestionTypes = catchAsyncError(async (req, res, next) => {
+    const [response] = await mcqquestionModel.aggregate([
+        {
+            $facet: {
+                data: [
+                    {
+                        $group: {
+                            _id: {
+                                question_type: "$question_type",
+                                difficulty_level: "$difficulty_level"
+                            },
+                            total: { $sum: 1 }
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: "$_id.question_type",
+                            difficulty_levels: {
+                                $push: {
+                                    level: "$_id.difficulty_level",
+                                    total_questions: "$total"
+                                }
+                            },
+                            total_questions: { $sum: "$total" }
+                        }
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            question_types: "$_id",
+                            difficulty_levels: 1,
+                            total_questions: 1
+                        }
+                    }
+                ],
+                meta: [
+                    {
+                        $count: "total_no_of_questions"
+                    }
+                ]
+            }
+        },
+        {
+            $project: {
+                total_no_of_questions: {
+                    $arrayElemAt: ["$meta.total_no_of_questions", 0]
+                },
+                data: "$data"
+            }
+        }
+    ]);
+
+    send_response(res, 200, true, 0, response, "Question types fetched successfully");
+})
+
+// Generate random questions for candidates
+exports.getRandomQuestion = catchAsyncError(async (req, res, next) => {
+    const userId = req.user?.id;
+    if (!userId) return next(new ErrorHandler("User id not found", 201));
+
+    const candidate = await interviewCandidateModel.findById(userId, { campaign_id: 1 });
+    const campaign_id = candidate?.campaign_id;
+    if (!campaign_id) return next(new ErrorHandler("No interview found", 201));
+
+    const campaign = await CampaignModel.findById(campaign_id);
+    if (!campaign) return next(new ErrorHandler("Campaign not found", 201));
+
+    const question_pattern = campaign.question_pattern;
+    if (!question_pattern.length) return next(new ErrorHandler("Question Pattern not found", 201));
+
+    const test_time_duration = campaign.test_time_duration;
+    if (!test_time_duration) return next(new ErrorHandler("Test time duration not given", 201));
+
+    const question_gernerator = await QuestionGeneratorModel.find({ candidate_id: userId });
+    if (!question_gernerator) return next(new ErrorHandler("User not found", 201));
+
+    const candidate_apti_id = question_gernerator[0]?._id;
+    const if_question_assigned = question_gernerator[0]?.if_question_assigned;
+    const questions = await mcqquestionModel.find();
+
+    // Update or send questions
+    let generating_questions = [];
+    let update_generated_data;
+    if (!if_question_assigned) {
+        for (const pattern of question_pattern) {
+            const { question_type, difficulty_level, questions_count } = pattern;
+            // Generating questions
+            let initialize_questions = [];
+            const techniModreate = questions.filter((v) => v.question_type === question_type && v.difficulty_level === difficulty_level);
+            if (techniModreate?.length) {
+                while (initialize_questions.length < questions_count && initialize_questions.length < techniModreate.length) {
+                    const idx = Math.floor(Math.random() * techniModreate.length);
+                    const isQuestionDuplicated = initialize_questions.some((v) => v._id.equals(techniModreate[idx]._id));
+                    if (!isQuestionDuplicated) {
+                        initialize_questions.push(techniModreate[idx]);
+                    }
+                }
+            }
+            generating_questions = [...generating_questions, ...initialize_questions];
         }
 
-        //validating answer
-        const candidate_apti_id = question_gernerator[0]?._id;
-        const updated_Answers = question_gernerator[0]?.assigned_questions?.map((originalData) => {
-            const matchingAnswer = candidateAnswers?.find((responseData) => {
-                const objectId = new ObjectId(responseData?._id);
-                return originalData?._id?.equals(objectId);
-            });
-            return {
-                ...originalData,
-                candidate_answer: matchingAnswer?.candidate_answer || '',
-            };
-        });
-
-        const calculate_apti_score = updated_Answers?.filter((val) => val?.question_type === "aptitude" && val?.candidate_answer === val?.answer)
-        const calculate_tech_moderate_score = updated_Answers?.filter((val) => val?.question_type === "python" && val?.difficulty_level === "moderate" && val?.candidate_answer === val?.answer)
-        const calculate_tech_hard_score = updated_Answers?.filter((val) => val?.question_type === "mern" && val?.difficulty_level === "hard" && val?.candidate_answer === val?.answer)
-
-        await QuestionGeneratorModel.findByIdAndUpdate(
+        update_generated_data = await QuestionGeneratorModel.findByIdAndUpdate(
             { _id: candidate_apti_id },
             {
-                assigned_questions: updated_Answers,
-                status: "Test Completed",
-                aptitude_score: calculate_apti_score?.length || 0,
-                reasoning_score: calculate_reasoning_score?.length || 0,
-                tech_moderate_score: calculate_tech_moderate_score?.length || 0,
-                tech_hard_score: calculate_tech_hard_score?.length || 0
-            }
+                assigned_questions: generating_questions,
+                if_question_assigned: true,
+                status: "Test Started",
+                test_StartedOn: new Date(),
+                test_EndedOn: new Date(Date.now() + test_time_duration * 60 * 1000),
+            },
+            { new: true },
+            { score: 0 }
         );
-        //
 
-        //Test completed user one time logged in setting true
-        const candidate_id = question_gernerator[0]?.candidate_id;
-        const candidate_exist = await interviewCandidateModel.findById({ _id: candidate_id });
-        if (!candidate_exist) {
-            return next(new ErrorHandler("User not found", 404))
-        }
-
-        // If oneTimeLoggedin is true then the test has been completed 
-        if (candidate_exist?.oneTimeLoggedin) {
-            return next(new ErrorHandler("Response already submitted", 404))
-        }
-
-        await interviewCandidateModel.findByIdAndUpdate({ _id: candidate_id }, { oneTimeLoggedin: true });
-        res.status(200).json({
-            success: true,
-            error_code: 0,
-            data: {},
-            message: "Questions fetched successfully"
-        })
+    } else {
+        update_generated_data = question_gernerator[0];
     }
-    catch (Err) {
-        res.status(500).json({
-            success: false,
-            message: Err?.message
-        })
+
+    // Remove answers
+    update_generated_data.assigned_questions = update_generated_data?.assigned_questions?.map((v) => {
+        const { answer, ...rest } = v;
+        return rest;
+    });
+
+    send_response(res, 200, true, 0, update_generated_data, "Questions fetched successfully");
+});
+
+// Validate candidate answers
+exports.validationCandidateAnswers = catchAsyncError(async (req, res, next) => {
+    const userId = req.user?.id;
+    const { close, candidate_answers } = req.body;
+    if (!candidate_answers?.length) return next(new ErrorHandler("Candidates answers not found", 201));
+
+    const candidate = await interviewCandidateModel.findById(userId, { campaign_id: 1 });
+    const campaign_id = candidate?.campaign_id;
+    if (!campaign_id) return next(new ErrorHandler("No interview found", 201));
+
+    const campaign = await CampaignModel.findById(campaign_id);
+    if (!campaign) return next(new ErrorHandler("Campaign not found", 201));
+
+    const question_pattern = campaign.question_pattern;
+    if (!question_pattern) return next(new ErrorHandler("Question Pattern not found", 201));
+
+    const question_gernerator = await QuestionGeneratorModel.find({ candidate_id: userId });
+    if (!question_gernerator) return next(new ErrorHandler("User not found", 201))
+
+    //validating answer
+    const candidate_apti_id = question_gernerator[0]?._id;
+    const updated_Answers = question_gernerator[0]?.assigned_questions?.map((originalData) => {
+        const matchingAnswer = candidate_answers?.find((responseData) => {
+            const objectId = new ObjectId(responseData?._id);
+            return originalData?._id?.equals(objectId);
+        });
+        return {
+            ...originalData,
+            candidate_answer: matchingAnswer?.candidate_answer || '',
+        };
+    });
+
+    const scoreBreakdown = {};
+    for (const pattern of question_pattern) {
+        const { question_type, difficulty_level } = pattern;
+        const matchedAnswers = updated_Answers?.filter(val =>
+            val?.question_type === question_type &&
+            val?.difficulty_level === difficulty_level &&
+            val?.candidate_answer === val?.answer
+        );
+
+        const total_question = updated_Answers?.filter(val =>
+            val?.question_type === question_type &&
+            val?.difficulty_level === difficulty_level
+        );
+        const key = `${question_type}_${difficulty_level}`;
+        scoreBreakdown[key] = `${matchedAnswers?.length || 0} out of ${total_question?.length || 0}`;
     }
+
+    await QuestionGeneratorModel.findByIdAndUpdate(
+        { _id: candidate_apti_id },
+        {
+            assigned_questions: updated_Answers,
+            status: close === "malpractice" ? close : "Test Completed",
+            score: scoreBreakdown
+        }
+    );
+    //
+
+    //Test completed user one time logged in setting true
+    const candidate_id = question_gernerator[0]?.candidate_id;
+    const candidate_exist = await interviewCandidateModel.findById({ _id: candidate_id });
+    if (!candidate_exist) return next(new ErrorHandler("User not found", 201))
+
+    // If oneTimeLoggedin is true then the test has been completed 
+    if (candidate_exist?.oneTimeLoggedin) return next(new ErrorHandler("Response already submitted", 201))
+
+    await interviewCandidateModel.findByIdAndUpdate({ _id: candidate_id }, { oneTimeLoggedin: true });
+    send_response(res, 200, true, 0, {}, "Candidate answers validated successfully");
 })
 
 exports.getInterviewCandidateStatus = catchAsyncError(async (req, res, next) => {
-    try {
-        const getCandidates = await QuestionGeneratorModel.aggregate([
-            {
-                $lookup: {
-                    from: "interview_candidates",
-                    localField: "candidate_id",
-                    foreignField: "_id",
-                    as: "candidate_details"
-                }
-            },
-            {
-                $project: {
-                    aptitude_score: 1,
-                    reasoning_score: 1,
-                    tech_hard_score: 1,
-                    tech_moderate_score: 1,
-                    test_EndedOn: 1,
-                    test_StartedOn: 1,
-                    candidate_role: 1,
-                    status: 1,
-                    candidate_details: {
-                        name: 1,
-                        candidateQualification: 1,
-                        phoneNumber: 1,
-                        email: 1,
-                        address: 1
-                    }
+    const getCandidates = await QuestionGeneratorModel.aggregate([
+        {
+            $lookup: {
+                from: "interview_candidates",
+                localField: "candidate_id",
+                foreignField: "_id",
+                as: "candidate_details"
+            }
+        },
+        {
+            $project: {
+                aptitude_score: 1,
+                reasoning_score: 1,
+                tech_hard_score: 1,
+                tech_moderate_score: 1,
+                test_EndedOn: 1,
+                test_StartedOn: 1,
+                candidate_role: 1,
+                status: 1,
+                candidate_details: {
+                    name: 1,
+                    candidateQualification: 1,
+                    phoneNumber: 1,
+                    email: 1,
+                    address: 1
                 }
             }
-        ])
+        }
+    ])
 
+    send_response(res, 200, true, 0, getCandidates, "Candidate status fetched successfully");
+})
 
-        res.status(200).json({
-            success: true,
-            data: getCandidates,
-            error_code: 0,
-            message: "candidate status fetched"
-        })
+exports.generateSampleTest = catchAsyncError(async (req, res, next) => {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return next(new ErrorHandler("Invalid campaign ID", 201));
 
+    const campaign = await CampaignModel.findById(id);
+    if (!campaign) return next(new ErrorHandler("Campaign not found", 201));
+
+    const question_pattern = campaign.question_pattern;
+    if (!question_pattern) return next(new ErrorHandler("Question Pattern not found", 201));
+    const questions = await mcqquestionModel.find();
+
+    // Update or send questions
+    let generating_questions = [];
+    let update_generated_data;
+    for (const pattern of question_pattern) {
+        const { question_type, difficulty_level, questions_count } = pattern;
+        // Generating questions
+        let initialize_questions = [];
+        const techniModreate = questions.filter((v) => v.question_type === question_type && v.difficulty_level === difficulty_level);
+        if (techniModreate?.length) {
+            while (initialize_questions.length < questions_count && initialize_questions.length < techniModreate.length) {
+                const idx = Math.floor(Math.random() * techniModreate.length);
+                const isQuestionDuplicated = initialize_questions.some((v) => v._id.equals(techniModreate[idx]._id));
+                if (!isQuestionDuplicated) {
+                    initialize_questions.push(techniModreate[idx]);
+                }
+            }
+        }
+        generating_questions = [...generating_questions, ...initialize_questions];
     }
-    catch (Err) {
-        res.status(500).json({
-            success: false,
-            message: Err?.message
-        })
+
+    update_generated_data = {
+        job_title: campaign.job_title,
+        generated_questions: generating_questions
     }
+    if (!generating_questions?.length) return next(new ErrorHandler("Questions not found", 201));
+    send_response(res, 200, true, 0, update_generated_data, "Questions generated");
+})
+
+//Update malpractice involving
+exports.updateInvolvingInMalpractice = catchAsyncError(async (req, res, next) => {
+    const userId = req.user?.id;
+    const { remaining_switching_count } = req.body;
+    if (!userId) return next(new ErrorHandler("User id not found", 201));
+
+    const candidate = await interviewCandidateModel.findById(userId);
+    if (!candidate) return next(new ErrorHandler("Candidate not found", 201));
+
+    const updatedCandidate = await interviewCandidateModel.findByIdAndUpdate(userId, { involved_in_tab_switching: remaining_switching_count - 1 }, { new: true });
+    send_response(res, 200, true, 0, { candidate_id: userId, involved_in_tab_switching: updatedCandidate.involved_in_tab_switching }, "Involvement in tab switching updated");
 })
